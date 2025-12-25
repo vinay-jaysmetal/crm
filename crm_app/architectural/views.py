@@ -38,20 +38,11 @@ class ArchitecturalCompanyAPI(ListAPIView):
 
         try:
             with transaction.atomic():
-                # Convert added_by name to user object
-                added_by_name = request.data.get("added_by")
-                added_by_user = None
-                if added_by_name:
-                    try:
-                        added_by_user = User.objects.get(username=added_by_name, role__name='Sales', is_active=True)
-                    except User.DoesNotExist:
-                        return ResponseFunction(0, f"Salesperson '{added_by_name}' not found", {})
-
                 serializer = self.serializer_class(data=request.data, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 company_obj = serializer.save()
 
-                self._save_nested(company_obj, contacts_data, reminders_data, notes_data, added_by_user)
+                self._save_nested(company_obj, contacts_data, reminders_data, notes_data, request)
 
                 data = self.serializer_class(company_obj).data
                 return ResponseFunction(1, "Client created", data)
@@ -76,21 +67,11 @@ class ArchitecturalCompanyAPI(ListAPIView):
         try:
             with transaction.atomic():
                 company_obj = get_object_or_404(ArchitecturalCompany, id=id)
-
-                # Convert added_by name to user object
-                added_by_name = request.data.get("added_by")
-                added_by_user = None
-                if added_by_name:
-                    try:
-                        added_by_user = User.objects.get(username=added_by_name, role__name='Sales', is_active=True)
-                    except User.DoesNotExist:
-                        return ResponseFunction(0, f"Salesperson '{added_by_name}' not found", {})
-
                 serializer = self.serializer_class(company_obj, data=request.data, partial=True, context={'request': request})
                 serializer.is_valid(raise_exception=True)
                 company_obj = serializer.save()
 
-                self._save_nested(company_obj, contacts_data, reminders_data, notes_data, added_by_user)
+                self._save_nested(company_obj, contacts_data, reminders_data, notes_data, request)
 
                 data = self.serializer_class(company_obj).data
                 return ResponseFunction(1, "Client updated", data)
@@ -112,7 +93,7 @@ class ArchitecturalCompanyAPI(ListAPIView):
         else:  # List with pagination & filters
             qs = self.get_queryset()
 
-            # Pagination
+            # Pagination using custom pagination class
             page = self.paginate_queryset(qs)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
@@ -148,17 +129,24 @@ class ArchitecturalCompanyAPI(ListAPIView):
     # -----------------------
     def get_queryset(self):
         qs = ArchitecturalCompany.objects.all()
+
+        # Query params
         is_dropdown = self.request.GET.get('is_dropdown', '0')
-        pagination = self.request.GET.get('pagination', '1')
         exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
 
-        if pagination == '0':
-            self.pagination_class = None
+        # Non-model fields to exclude from filtering
+        NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list', 'page']  # include page
+
+        # Handle dropdown: only id and name
         if is_dropdown == '1':
             qs = qs.only('id', 'name')
 
+        # Build filters from GET params
         filters = {}
         for field in self.request.GET.keys():
+            if field in NON_DB_FIELDS:
+                continue
+
             value = self.request.GET.get(field)
             if value:
                 if field == "name":
@@ -168,17 +156,27 @@ class ArchitecturalCompanyAPI(ListAPIView):
                 else:
                     filters[field] = value
 
+        # Apply filters
+        qs = qs.filter(**filters)
+
+        # Exclude IDs if provided
         if exclude_id_list:
-            qs = qs.filter(**filters).exclude(id__in=exclude_id_list)
-        else:
-            qs = qs.filter(**filters)
+            qs = qs.exclude(id__in=exclude_id_list)
 
         return qs.order_by('-id')
 
     # -----------------------
+    # Paginate queryset correctly (use custom pagination)
+    # -----------------------
+    def paginate_queryset(self, queryset):
+        if self.request.GET.get('pagination', '1') == '0':
+            return None  # Disable pagination
+        return super().paginate_queryset(queryset)
+
+    # -----------------------
     # HELPER: Save Nested Contacts, Reminders, Notes
     # -----------------------
-    def _save_nested(self, company_obj, contacts_data, reminders_data, notes_data, added_by_user):
+    def _save_nested(self, company_obj, contacts_data, reminders_data, notes_data, request):
         # Contacts
         for contact in contacts_data:
             contact_id = contact.get("id")
@@ -195,13 +193,8 @@ class ArchitecturalCompanyAPI(ListAPIView):
         # Reminders
         for reminder in reminders_data:
             reminder_id = reminder.get("id")
-            assigned_to_name = reminder.get("assigned_to")
-            assigned_to_user = None
-            if assigned_to_name:
-                try:
-                    assigned_to_user = User.objects.get(username=assigned_to_name, role__name='Sales', is_active=True)
-                except User.DoesNotExist:
-                    return ResponseFunction(0, f"Salesperson '{assigned_to_name}' not found", {})
+            assigned_to_id = reminder.get("assigned_to")
+            assigned_to_user = get_object_or_404(User, id=assigned_to_id) if assigned_to_id else None
 
             if reminder_id:
                 reminder_obj = get_object_or_404(ArchitecturalReminder, id=reminder_id)
@@ -214,6 +207,8 @@ class ArchitecturalCompanyAPI(ListAPIView):
                 reminder_serializer.save(company=company_obj, assigned_to=assigned_to_user)
 
         # Notes
+        added_by_id = request.data.get("added_by")
+        added_by_user = get_object_or_404(User, id=added_by_id) if added_by_id else None
         for note in notes_data:
             note_content = note.get("content") or note.get("note")
             if note_content:
@@ -228,11 +223,13 @@ class SalesRepDropdownAPI(APIView):
     """
     Returns a list of active salespersons for dropdowns.
     """
+
     def get(self, request):
         try:
             sales_reps = User.objects.filter(role__name='Sales', is_active=True)
             data = [{"id": rep.id, "name": rep.get_full_name() or rep.username} for rep in sales_reps]
-            return ResponseFunction(True, "Sales reps fetched successfully", data)
+            return ResponseFunction(1, "Sales reps fetched successfully", data)
+
         except Exception as e:
             print(f"Exception occurred: {e}")
             return ResponseFunction(0, str(e), {})
