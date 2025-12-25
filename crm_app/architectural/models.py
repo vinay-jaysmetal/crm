@@ -1,0 +1,147 @@
+from django.db import models
+from django.conf import settings
+
+# ----------------------------
+# Company / Customer Account
+# ----------------------------
+class ArchitecturalCompany(models.Model):
+    CATEGORY_CHOICES = [
+        ('GC', 'GC'),
+        ('Builder', 'Builder'),
+        ('Architect', 'Architect'),
+    ]
+    COMPANY_TYPE_CHOICES = [
+        ('Existing', 'Existing'),
+        ('Potential', 'Potential'),
+    ]
+    LEAD_STATUS_CHOICES = [
+        ('Hot', 'Hot'),
+        ('Warm', 'Warm'),
+        ('Cold', 'Cold'),
+    ]
+    PROJECT_STATUS_CHOICES = [
+        ('Hot', 'Hot'),
+        ('Warm', 'Warm'),
+        ('Cold', 'Cold'),
+    ]
+
+    name = models.CharField(max_length=255)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=50, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+
+    company_type = models.CharField(max_length=20, choices=COMPANY_TYPE_CHOICES)
+    existing_category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, null=True)
+    potential_category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, null=True)
+
+    lead_status = models.CharField(max_length=10, choices=LEAD_STATUS_CHOICES, blank=True, null=True)
+    project_status = models.CharField(max_length=10, choices=PROJECT_STATUS_CHOICES, blank=True, null=True)
+
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="architectural_companies"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
+# ----------------------------
+# Multiple Contacts per Company
+# ----------------------------
+class ArchitecturalContact(models.Model):
+    company = models.ForeignKey(
+        ArchitecturalCompany, on_delete=models.CASCADE, related_name="contacts"
+    )
+    name = models.CharField(max_length=255)
+    role = models.CharField(max_length=100)
+    phone = models.CharField(max_length=20)
+    email = models.EmailField()
+
+    def __str__(self):
+        return f"{self.name} ({self.company.name})"
+
+
+# ----------------------------
+# Notes per Company
+# ----------------------------
+class ArchitecturalNote(models.Model):
+    company = models.ForeignKey(
+        ArchitecturalCompany, on_delete=models.CASCADE, related_name="notes"
+    )
+    note = models.TextField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Note for {self.company.name} by {self.created_by}"
+
+
+# ----------------------------
+# Projects per Company
+# ----------------------------
+class ArchitecturalProject(models.Model):
+    STATUS_CHOICES = [
+        ('Hot', 'Hot'),
+        ('Warm', 'Warm'),
+        ('Cold', 'Cold'),
+    ]
+
+    company = models.ForeignKey(
+        ArchitecturalCompany, on_delete=models.CASCADE, related_name="projects"
+    )
+    name = models.CharField(max_length=255)
+    address = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Hot')
+
+    def __str__(self):
+        return f"{self.name} ({self.company.name})"
+
+
+# ----------------------------
+# Reminders per Company
+# ----------------------------
+class ArchitecturalReminder(models.Model):
+    FREQUENCY_CHOICES = [
+        ('None', 'None'),
+        ('Weekly', 'Weekly'),
+        ('Monthly', 'Monthly'),
+        ('Yearly', 'Yearly'),
+        ('Custom', 'Custom'),
+    ]
+
+    company = models.ForeignKey(
+        ArchitecturalCompany, on_delete=models.CASCADE, related_name="reminders"
+    )
+    assigned_to = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="architectural_reminders"
+    )
+    reminder_date = models.DateField()
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='None')
+    note = models.TextField()
+    completed = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Reminder for {self.company.name} on {self.reminder_date}"
+
+
+# ----------------------------
+# Calendar Activities per Company
+# ----------------------------
+class ArchitecturalCalendarActivity(models.Model):
+    company = models.ForeignKey(
+        ArchitecturalCompany, on_delete=models.CASCADE, related_name="calendar_activities"
+    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    activity_date = models.DateField()
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.activity_date} - {self.company.name}"

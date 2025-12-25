@@ -1,0 +1,122 @@
+pip install python-quickbooks intuit-oauth
+
+
+QBO_CLIENT_ID='ABqCPLjGHYiO95WQf47Al7rIbIAUhzjtRYP6LQwPC0EP7nwTrA'
+QBO_CLIENT_SECRET='DFugLsRh9bRHx9283kbSc6kWVHrWCEBzjGmnAboA'
+QBO_REDIRECT_URI='http://localhost:8000/qbo/callback/'
+QBO_ENVIRONMENT='sandbox'
+QBO_REALM_ID='9130350854207246'
+xQBO_REALM_ID='9341455220726730'
+
+
+
+# views_qbo.py
+
+import os
+from django.http import JsonResponse, HttpResponseRedirect
+from intuitlib.client import AuthClient
+from intuitlib.enums import Scopes
+from quickbooks import QuickBooks
+
+# ---- Load from constants.py instead of .env for now ----
+from core_app import constants
+
+auth_client = AuthClient(
+    client_id=constants.QBO_CLIENT_ID,
+    client_secret=constants.QBO_CLIENT_SECRET,
+    redirect_uri=constants.QBO_REDIRECT_URI,
+    environment=constants.QBO_ENVIRONMENT,  # 'sandbox'
+)
+
+
+def qbo_connect(request):
+    """Step 1: Redirect user to QuickBooks login"""
+    # auth_url = auth_client.get_authorization_url([Scopes.ACCOUNTING])
+    
+    # Instantiate client
+    auth_client = AuthClient(
+        constants.QBO_CLIENT_ID,
+        constants.QBO_CLIENT_SECRET,
+        constants.QBO_REDIRECT_URI,
+        constants.QBO_ENVIRONMENT,
+    )
+
+    # Prepare scopes
+    scopes = [
+        Scopes.ACCOUNTING,
+    ]
+
+    # Get authorization URL
+    auth_url = auth_client.get_authorization_url(scopes)
+    print("Redirecting to QuickBooks for authorization:", auth_url)
+    return HttpResponseRedirect(auth_url)
+
+
+
+def qbo_callback(request):
+    """Step 2: Handle callback from QuickBooks"""
+    code = request.GET.get("code")
+    realm_id = request.GET.get("realmId")
+
+    if not code or not realm_id:
+        return JsonResponse({"error": "Missing code or realmId"}, status=400)
+
+    # Exchange code for tokens
+    auth_client.get_bearer_token(auth_code=code, realm_id=realm_id)
+
+    # Save tokens (demo: in memory, but use DB in real app)
+    request.session["access_token"] = auth_client.access_token
+    request.session["refresh_token"] = auth_client.refresh_token
+    request.session["realm_id"] = realm_id
+
+    return JsonResponse({
+        "message": "QuickBooks connected",
+        "realm_id": realm_id,
+        "access_token": auth_client.access_token,
+    })
+
+
+def qbo_invoices(request):
+    """Step 3: Fetch invoices using python-quickbooks"""
+    access_token = request.session.get("access_token")
+    refresh_token = request.session.get("refresh_token")
+    realm_id = request.session.get("realm_id")
+
+    if not access_token:
+        return JsonResponse({"error": "Not connected to QuickBooks"}, status=401)
+
+    # Setup QuickBooks client
+    client = QuickBooks(
+        auth_client=auth_client,
+        refresh_token=refresh_token,
+        company_id=realm_id,
+    )
+    client.access_token = access_token  # set token manually
+
+    # Example: Fetch 10 invoices
+    from quickbooks.objects.invoice import Invoice
+    invoices = Invoice.filter(start_position=1, max_results=10, qb=client)
+
+    data = [inv.to_dict() for inv in invoices]
+    return JsonResponse({"invoices": data})
+
+
+from rank_app import views_qbo
+
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+
+    
+    path('core/', include('core_app.urls')),
+    path('user/', include('user_app.urls')),
+    path('order/', include('order_app.urls')),
+    path('rank/', include('rank_app.urls')),
+    path('product/', include('product_app.urls')),
+    path('settings/', include('settings_app.urls')),
+    path('callback/', include('rank_app.urls')),
+
+    path("qbo/connect/", views_qbo.qbo_connect),
+    path("qbo/callback/", views_qbo.qbo_callback),
+    path("qbo/invoices/", views_qbo.qbo_invoices),
+]

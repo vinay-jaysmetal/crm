@@ -1,0 +1,117 @@
+name: Deploy to EC2
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: 'Apply database migrations?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      environment:
+        description: 'Which environment to be deployed?'
+        required: true
+        default: 'sandbox'
+        type: choice
+        options:
+          - 'sandbox'
+          - 'production'
+      collect_static:
+        description: 'Run collectstatic?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      first_deploy:
+        description: 'Is this a first-time deployment?'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+run-name: ${{ github.event.inputs.environment }} deployment started by ${{ github.actor }} on ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+
+jobs:
+  deploy:
+    name: Deploy via SSH
+    runs-on: ubuntu-latest
+
+
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: SSH Deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          # EC2_HOST is the ipaddress or hostname of your EC2 instance
+          host: ${{ github.event.inputs.environment == 'sandbox' && secrets.EC2_HOST || secrets.EC2_PRODUCTION_HOST }} 
+          # EC2_USER ubuntu user for EC2
+          username: ${{ secrets.EC2_USER }}
+          # EC2_SSH_KEY is the private key for SSH access to your EC2 instance
+          key: ${{ github.event.inputs.environment == 'sandbox' && secrets.EC2_SSH_KEY || secrets.EC2_PRODUCTION_SSH_KEY }}
+          envs: APPLY_MIGRATIONS,COLLECT_STATIC,FIRST_DEPLOY,TOKEN
+          script: |
+            echo "🔍 Checking and installing Docker, Docker Compose, Git..."
+
+            # Update and install if not present
+            if ! command -v docker >/dev/null 2>&1 || ! command -v docker-compose >/dev/null 2>&1; then
+              echo "Docker or Docker Compose not found. Installing..."
+              sudo apt update
+              sudo apt install -y docker.io docker-compose git
+              sudo usermod -aG docker $USER
+              newgrp docker
+              echo "✅ Docker and Docker Compose installed successfully ✅✅✅"
+            fi
+
+            echo "✅ Docker and Git installed"
+            PROJECT_DIR=~/JaysMetal_Backend
+
+            # First-time deployment: clone the repo
+            if [ "$FIRST_DEPLOY" == "true" ]; then
+              if [ ! -d "$PROJECT_DIR" ]; then
+                git clone https://$TOKEN@github.com/solutionizeitx/JaysMetal_Backend.git $PROJECT_DIR
+                echo "📦📦📦 Cloned repository to $PROJECT_DIR 📦📦📦"
+              fi
+            fi
+
+            cd $PROJECT_DIR
+
+            # Pull latest code
+            git pull origin main
+            echo "✅ Pulled latest code from main branch"
+
+            # Docker setup
+            docker-compose down
+            echo "🛑 Stopped existing Docker containers"
+
+            docker-compose up -d --build
+            echo "🚀 Docker containers are up and running"
+
+            # Apply migrations if chosen
+            if [ "$APPLY_MIGRATIONS" == "true" ]; then
+              docker-compose exec -T web python manage.py migrate --noinput
+              echo "✅ Applied database migrations"
+            fi
+
+            # Run collectstatic if chosen
+            if [ "$COLLECT_STATIC" == "true" ]; then
+              docker-compose exec -T web python manage.py collectstatic --noinput
+              echo "✅ Collected static files"
+            fi
+
+            echo "🎉🎉🎉 Deployment completed successfully! 🎉🎉🎉"
+
+        env:
+          APPLY_MIGRATIONS: ${{ github.event.inputs.apply_migrations }}
+          COLLECT_STATIC: ${{ github.event.inputs.collect_static }}
+          FIRST_DEPLOY: ${{ github.event.inputs.first_deploy }}
+          TOKEN: ${{ secrets.JASIR_TOKEN }}

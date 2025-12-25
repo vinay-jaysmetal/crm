@@ -1,0 +1,32 @@
+        
+        
+"""
+UI/UX - Pending works
+
+1 - Project Filter options in project page 
+
+filter data: 
+
+search -  will check for contact, project name, contact name
+
+project status - completed, not completed
+
+start date from - date 
+start date to - date
+end date from - date
+end date to - date
+
+contact name - contact name
+ 
+contact number - contact number
+
+2 - Profile pic edit functionality in profile, when click on edit, open a photo choose modal
+
+3 - No data pages
+
+- Projects 
+- Home
+- Notification
+- Project / Project Details / No image view - in there view all doesnt make a sense, so we might need an option to add image
+
+"""

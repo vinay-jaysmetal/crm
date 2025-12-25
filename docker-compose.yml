@@ -1,0 +1,76 @@
+services:
+  web:
+    build: .
+    environment:
+      - GUNICORN_WORKERS=3  # Optional: Use Gunicorn for production
+    command: gunicorn --reload --bind 0.0.0.0:8000 --workers 3 jaysmetal_backend.wsgi:application
+    # command: python manage.py runserver 0.0.0.0:8000  # Dev only
+    volumes:
+      - .:/app
+      - ./staticfiles:/app/staticfiles 
+      - ./media:/app/media  # 👈 Added for default media handling
+    ports:  # Remove in production or comment out
+       - "8000:8000"  # Dev only (disable in prod)
+    env_file:
+      - .env
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15.12
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deployment/nginx/nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./staticfiles:/var/www/staticfiles  # static files
+      - ./deployment/certs/cloudflare.crt:/etc/ssl/certs/cloudflare.crt
+      - ./deployment/certs/cloudflare.key:/etc/ssl/private/cloudflare.key
+      - ./media:/var/www/mediafiles  # 👈 Add this for django media setup default
+
+    depends_on:
+      - web
+
+  redis:
+    image: redis:alpine
+    volumes:
+      - redis_data:/data
+
+  celery:
+    build: .
+    command: celery -A jaysmetal_backend worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+
+  celery-beat:
+    build: .
+    command: celery -A jaysmetal_backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - redis
+
+
+volumes:
+  postgres_data:
+  redis_data:

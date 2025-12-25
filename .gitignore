@@ -1,0 +1,9 @@
+/venv
+*\pycache*
+db.sqlite3
+.env
+media
+xmedia
+staticfiles
+
+*.dump

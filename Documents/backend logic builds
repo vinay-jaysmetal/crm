@@ -1,0 +1,6 @@
+Notification read functionality
+-------------------------------
+- if a notification is send, then user has to be notified
+- when user opens app, we will be have a read_notification list data, with that we can manage read notifications,
+- when user visits the notification page will call read notification api with notification ids as list
+- notification in the system will be kept for 30days, after that it will be deleted, so id from read_notification will also cleared due m2m relation
