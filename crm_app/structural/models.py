@@ -122,9 +122,38 @@ class StructuralReminder(models.Model):
 class StructuralCalendarActivity(models.Model):
     company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="calendar_activities")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    related_reminder = models.ForeignKey(
+        StructuralReminder, on_delete=models.SET_NULL, null=True, blank=True
+    )
+    title = models.CharField(max_length=255)
     activity_date = models.DateField()
     description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.activity_date} - {self.company.name}"
+
+class Notification(models.Model):
+    sales_person = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+    company = models.ForeignKey(
+        StructuralCompany,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+    reminder = models.ForeignKey(
+        StructuralReminder,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+
+    title = models.CharField(max_length=255)
+    note = models.TextField()   # reminder note used as message
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} - {self.company.name}"
