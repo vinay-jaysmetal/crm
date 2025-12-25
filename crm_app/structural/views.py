@@ -129,18 +129,25 @@ class StructuralCompanyAPI(ListAPIView):
     # -----------------------
     def get_queryset(self):
         qs = StructuralCompany.objects.all()
+
+        # Query params
         is_dropdown = self.request.GET.get('is_dropdown', '0')
         pagination = self.request.GET.get('pagination', '1')
         exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
 
-        if pagination == '0':
-            self.pagination_class = None
-            qs = qs  # disable pagination
+        # Non-model fields to exclude from filtering
+        NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list']
+
+        # Handle dropdown: only id and name
         if is_dropdown == '1':
             qs = qs.only('id', 'name')
 
+        # Build filters from GET params
         filters = {}
         for field in self.request.GET.keys():
+            if field in NON_DB_FIELDS:
+                continue
+
             value = self.request.GET.get(field)
             if value:
                 if field == "name":
@@ -150,12 +157,23 @@ class StructuralCompanyAPI(ListAPIView):
                 else:
                     filters[field] = value
 
+        # Apply filters
+        qs = qs.filter(**filters)
+
+        # Exclude IDs if provided
         if exclude_id_list:
-            qs = qs.filter(**filters).exclude(id__in=exclude_id_list)
-        else:
-            qs = qs.filter(**filters)
+            qs = qs.exclude(id__in=exclude_id_list)
 
         return qs.order_by('-id')
+
+    # -----------------------
+    # Paginate queryset correctly
+    # -----------------------
+    def paginate_queryset(self, queryset):
+        pagination = self.request.GET.get('pagination', '1')
+        if pagination == '0':
+            return None  # Disable pagination
+        return super().paginate_queryset(queryset)
 
     # -----------------------
     # HELPER: Save Nested Contacts, Reminders, Notes
