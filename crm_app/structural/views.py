@@ -92,8 +92,8 @@ class StructuralCompanyAPI(ListAPIView):
             return ResponseFunction(1, "Client fetched successfully", data)
         else:  # List with pagination & filters
             qs = self.get_queryset()
-            
-            # Pagination
+
+            # Pagination using custom pagination class
             page = self.paginate_queryset(qs)
             if page is not None:
                 serializer = self.get_serializer(page, many=True)
@@ -132,11 +132,10 @@ class StructuralCompanyAPI(ListAPIView):
 
         # Query params
         is_dropdown = self.request.GET.get('is_dropdown', '0')
-        pagination = self.request.GET.get('pagination', '1')
         exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
 
         # Non-model fields to exclude from filtering
-        NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list']
+        NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list', 'page']  # include page
 
         # Handle dropdown: only id and name
         if is_dropdown == '1':
@@ -167,11 +166,10 @@ class StructuralCompanyAPI(ListAPIView):
         return qs.order_by('-id')
 
     # -----------------------
-    # Paginate queryset correctly
+    # Paginate queryset correctly (use custom pagination)
     # -----------------------
     def paginate_queryset(self, queryset):
-        pagination = self.request.GET.get('pagination', '1')
-        if pagination == '0':
+        if self.request.GET.get('pagination', '1') == '0':
             return None  # Disable pagination
         return super().paginate_queryset(queryset)
 
