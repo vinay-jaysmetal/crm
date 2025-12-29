@@ -343,7 +343,7 @@ class MyNotificationsAPIView(ListAPIView):
     
         
 class AcknowledgeReminderAPIView(APIView):
-
+    permission_classes = [IsAuthenticated]
     def post(self, request, reminder_id):
         note = request.data.get("note")
         if not note:
@@ -364,8 +364,8 @@ class AcknowledgeReminderAPIView(APIView):
         # Mark notification read
         StructuralNotification.objects.filter(
             reminder=reminder,
-            user=request.user
-        ).update(is_read=True)
+            sales_person=request.user
+        ).update(read=True)
 
         return ResponseFunction(1, "Reminder acknowledged", {})
     
