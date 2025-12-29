@@ -127,7 +127,7 @@ class StructuralCustomerSerializer(serializers.ModelSerializer):
 class StructuralNotificationSerializer(serializers.ModelSerializer):
     company_detail = serializers.SerializerMethodField()
     reminder_detail = serializers.SerializerMethodField()
-    notification_date = serializers.DateTimeField(source='created_at', read_only=True)
+    
 
     class Meta:
         model = StructuralNotification
@@ -139,7 +139,7 @@ class StructuralNotificationSerializer(serializers.ModelSerializer):
             "company_detail",
             "reminder",
             "reminder_detail",
-            "notification_date",
+            "created_at",
         )
 
     def get_company_detail(self, obj):

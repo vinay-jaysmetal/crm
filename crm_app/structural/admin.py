@@ -80,8 +80,8 @@ admin.site.register(StructuralCalendarActivity, StructuralCalendarActivityAdmin)
 
 
 class StructuralNotificationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'sales_person', 'company', 'notification_date', 'created_at')
+    list_display = ('id', 'sales_person', 'company', 'reminder', 'created_at')
     search_fields = ('company__company_name',)
-    ordering = ('-notification_date',)
-    
+    ordering = ('-created_at',)
+
 admin.site.register(StructuralNotification, StructuralNotificationAdmin)    
