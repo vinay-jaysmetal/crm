@@ -133,56 +133,67 @@ class StructuralCustomerAPI(ListAPIView):
     # -----------------------
     
 
+    from django.db.models import Q
+
     def get_queryset(self):
-        qs = StructuralCustomer.objects.all()
+            qs = StructuralCustomer.objects.all()
 
-        # Query params
-        is_dropdown = self.request.GET.get('is_dropdown', '0')
-        exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
-        keyword = self.request.GET.get('search', '')  # search key
+            # Query params
+            is_dropdown = self.request.GET.get('is_dropdown', '0')
+            exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
+            keyword = self.request.GET.get('search', '')  # search key
+            company_type = self.request.GET.get('company_type')  # Existing / Potential
+            lead_status = self.request.GET.get('lead_status')    # Hot / Warm / Cold
+            project_status = self.request.GET.get('project_status')  # Hot / Warm / Cold
 
-        # Non-model fields to exclude from filtering
-        NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list', 'page', 'search']
+            # Non-model fields to exclude from filtering
+            NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list', 'page', 'search', 
+                                'company_type', 'lead_status', 'project_status']
 
-        # Handle dropdown: only id and company_name
-        if is_dropdown == '1':
-            qs = qs.only('id', 'company_name')
+            # Handle dropdown: only id and company_name
+            if is_dropdown == '1':
+                qs = qs.only('id', 'company_name')
 
-        # Apply exact filters from GET params
-        filters = {}
-        for field in self.request.GET.keys():
-            if field in NON_DB_FIELDS:
-                continue
+            # Apply exact filters from GET params
+            filters = {}
+            for field in self.request.GET.keys():
+                if field in NON_DB_FIELDS:
+                    continue
 
-            value = self.request.GET.get(field)
-            if value:
-                filters[field] = value
+                value = self.request.GET.get(field)
+                if value:
+                    filters[field] = value
 
-        qs = qs.filter(**filters)
+            qs = qs.filter(**filters)
 
-        # Apply keyword search across multiple fields
-        if keyword:
-            qs = qs.filter(
-                Q(company_name__icontains=keyword) |
-                Q(email__icontains=keyword) |
-                Q(phone__icontains=keyword) |
-                Q(existing_category__icontains=keyword) |
-                Q(potential_category__icontains=keyword) |
-                Q(address__icontains=keyword) |
-                Q(existing_category__icontains=keyword) |
-                Q(potential_category__icontains=keyword) |
-                Q(added_by__first_name__icontains=keyword) |
-                Q(added_by__last_name__icontains=keyword) |
-                Q(added_by__username__icontains=keyword)
-                
-                
-            )
+            # Apply keyword search across multiple fields
+            if keyword:
+                qs = qs.filter(
+                    Q(company_name__icontains=keyword) |
+                    Q(email__icontains=keyword) |
+                    Q(phone__icontains=keyword) |
+                    Q(existing_category__icontains=keyword) |
+                    Q(potential_category__icontains=keyword) |
+                    Q(address__icontains=keyword) |
+                    Q(added_by__first_name__icontains=keyword) |
+                    Q(added_by__last_name__icontains=keyword) |
+                    Q(added_by__username__icontains=keyword)
+                )
 
-        # Exclude IDs if provided
-        if exclude_id_list:
-            qs = qs.exclude(id__in=exclude_id_list)
+            # Apply category filters if provided
+            if company_type:
+                qs = qs.filter(company_type__iexact=company_type)
+            if lead_status:
+                qs = qs.filter(lead_status__iexact=lead_status)
+            if project_status:
+                qs = qs.filter(project_status__iexact=project_status)
 
-        return qs.order_by('-id')
+            # Exclude IDs if provided
+            if exclude_id_list:
+                qs = qs.exclude(id__in=exclude_id_list)
+
+            return qs.order_by('-id')
+
 
 
     # -----------------------
