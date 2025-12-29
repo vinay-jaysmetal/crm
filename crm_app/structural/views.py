@@ -133,8 +133,6 @@ class StructuralCustomerAPI(ListAPIView):
     # -----------------------
     
 
-    from django.db.models import Q
-
     def get_queryset(self):
             qs = StructuralCustomer.objects.all()
 
