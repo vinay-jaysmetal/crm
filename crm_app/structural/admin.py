@@ -1,23 +1,25 @@
 from django.contrib import admin
 from .models import (
-    StructuralCompany,
+    StructuralCustomer,
     StructuralContact,
     StructuralNote,
+    StructuralNotification,
     StructuralProject,
     StructuralReminder,
-    StructuralCalendarActivity
+    StructuralCalendarActivity,
+    StructuralNotification
 )
 
 # ----------------------------
 # Structural Company Admin
 # ----------------------------
-class StructuralCompanyAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'company_type', 'added_by', 'created_at')
-    search_fields = ('name', 'phone', 'email')
+class StructuralCustomerAdmin(admin.ModelAdmin):
+    list_display = ('id', 'company_name', 'company_type', 'added_by', 'created_at')
+    search_fields = ('company_name', 'phone', 'email')
     list_filter = ('company_type', 'lead_status', 'project_status')
     ordering = ('-created_at',)
 
-admin.site.register(StructuralCompany, StructuralCompanyAdmin)
+admin.site.register(StructuralCustomer, StructuralCustomerAdmin)
 
 
 # ----------------------------
@@ -75,3 +77,11 @@ class StructuralCalendarActivityAdmin(admin.ModelAdmin):
     ordering = ('-activity_date',)
 
 admin.site.register(StructuralCalendarActivity, StructuralCalendarActivityAdmin)
+
+
+class StructuralNotificationAdmin(admin.ModelAdmin):
+    list_display = ('id', 'sales_person', 'company', 'notification_date', 'created_at')
+    search_fields = ('company__company_name',)
+    ordering = ('-notification_date',)
+    
+admin.site.register(StructuralNotification, StructuralNotificationAdmin)    

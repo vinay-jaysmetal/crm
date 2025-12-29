@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import StructuralCompany, StructuralContact, StructuralNote, StructuralReminder
+from .models import StructuralCustomer, StructuralContact, StructuralNote, StructuralReminder, StructuralNotification, StructuralCalendarActivity
 
 User = get_user_model()
 
@@ -59,7 +59,7 @@ class StructuralReminderSerializer(serializers.ModelSerializer):
 # ----------------------------
 # Company Serializer
 # ----------------------------
-class StructuralCompanySerializer(serializers.ModelSerializer):
+class StructuralCustomerSerializer(serializers.ModelSerializer):
     added_by_detail = serializers.SerializerMethodField(read_only=True)
     added_by = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
     contacts = StructuralContactSerializer(many=True, required=False)
@@ -67,10 +67,10 @@ class StructuralCompanySerializer(serializers.ModelSerializer):
     notes = StructuralNoteSerializer(many=True, required=False)
 
     class Meta:
-        model = StructuralCompany
+        model = StructuralCustomer
         fields = (
             'id',
-            'name',
+            'company_name',
             'company_type',
             'existing_category',
             'potential_category',
@@ -96,7 +96,7 @@ class StructuralCompanySerializer(serializers.ModelSerializer):
         notes_data = validated_data.pop('notes', [])
 
         # Create company
-        company = StructuralCompany.objects.create(**validated_data)
+        company = StructuralCustomer.objects.create(**validated_data)
 
         # Create contacts
         for contact_data in contacts_data:
@@ -120,3 +120,105 @@ class StructuralCompanySerializer(serializers.ModelSerializer):
                 )
 
         return company
+
+# serializers.py
+
+
+class StructuralNotificationSerializer(serializers.ModelSerializer):
+    company_detail = serializers.SerializerMethodField()
+    reminder_detail = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StructuralNotification
+        fields = (
+            "id",
+            "message",
+            "is_read",
+            "company",
+            "company_detail",
+            "reminder",
+            "reminder_detail",
+            "notification_date",
+        )
+
+    def get_company_detail(self, obj):
+        if not obj.company:
+            return None
+        return {
+            "id": obj.company.id,
+            "name": obj.company.company_name,
+        }
+
+    def get_reminder_detail(self, obj):
+        r = obj.reminder
+        if not r:
+            return None
+        return {
+            "id": r.id,
+            "date": r.reminder_date,
+            "frequency": r.frequency,
+            "note": r.note,
+            "completed": r.completed,
+        }
+
+
+class StructuralCalendarSerializer(serializers.ModelSerializer):
+    # Mapping activity_date → date (FIXED)
+    date = serializers.DateField(source="activity_date", read_only=True)
+
+    company_detail = serializers.SerializerMethodField()
+    salesperson = serializers.SerializerMethodField()
+    reminder_detail = serializers.SerializerMethodField()
+    notes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StructuralCalendarActivity
+        fields = (
+            "date",
+            "title",
+            "company_detail",
+            "salesperson",
+            "reminder_detail",
+            "notes",
+        )
+
+    def get_company_detail(self, obj):
+        if not obj.company:
+            return None
+        return {
+            "id": obj.company.id,
+            "name": obj.company.company_name,
+        }
+
+    def get_salesperson(self, obj):
+        if not obj.user:
+            return None
+        return {
+            "id": obj.user.id,
+            "name": obj.user.get_full_name(),
+        }
+
+    def get_reminder_detail(self, obj):
+        r = obj.related_reminder
+        if not r:
+            return None
+
+        return {
+            "id": r.id,
+            "date": r.reminder_date,
+            "frequency": r.frequency,
+            "note": r.note,
+            "completed": r.completed,
+            "assigned_to": {
+                "id": r.assigned_to.id,
+                "name": r.assigned_to.get_full_name(),
+            } if r.assigned_to else None,
+        }
+
+    def get_notes(self, obj):
+        if not obj.company:
+            return []
+        return list(
+            obj.company.notes.values("id", "note")
+        )
+

@@ -4,7 +4,7 @@ from django.conf import settings
 # ----------------------------
 # Company / Customer Account
 # ----------------------------
-class StructuralCompany(models.Model):
+class StructuralCustomer(models.Model):
     CATEGORY_CHOICES = [
         ('GC', 'GC'),
         ('Builder', 'Builder'),
@@ -26,7 +26,7 @@ class StructuralCompany(models.Model):
     ]
 
     # Company Info
-    name = models.CharField(max_length=255)
+    company_name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=50, blank=True, null=True)
 
@@ -47,28 +47,28 @@ class StructuralCompany(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return self.company_name
 
 
 # ----------------------------
 # Multiple Contacts per Company
 # ----------------------------
 class StructuralContact(models.Model):
-    company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="contacts")
+    company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="contacts")
     name = models.CharField(max_length=255)
     role = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
     email = models.EmailField()
 
     def __str__(self):
-        return f"{self.name} ({self.company.name})"
+        return f"{self.name} ({self.company.company_name})"
 
 
 # ----------------------------
 # Notes per Company
 # ----------------------------
 class StructuralNote(models.Model):
-    company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="notes")
+    company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="notes")
     note = models.TextField()
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -84,13 +84,13 @@ class StructuralProject(models.Model):
         ('Cold', 'Cold'),
     ]
 
-    company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="projects")
+    company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="projects")
     name = models.CharField(max_length=255)
     address = models.TextField(blank=True, null=True)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Hot')
 
     def __str__(self):
-        return f"{self.name} ({self.company.name})"
+        return f"{self.name} ({self.company.company_name})"
 
 
 # ----------------------------
@@ -105,22 +105,22 @@ class StructuralReminder(models.Model):
         ('Custom', 'Custom'),
     ]
 
-    company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="reminders")
+    company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="reminders")
     assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reminders")
     reminder_date = models.DateField()
     frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='None')
-    note = models.TextField()
+    note = models.TextField(null=True, blank=True)
     completed = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"Reminder for {self.company.name} on {self.reminder_date}"
+        return f"Reminder for {self.company.company_name} on {self.reminder_date}"
 
 
 # ----------------------------
 # Calendar Activities per Company
 # ----------------------------
 class StructuralCalendarActivity(models.Model):
-    company = models.ForeignKey(StructuralCompany, on_delete=models.CASCADE, related_name="calendar_activities")
+    company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="calendar_activities")
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     related_reminder = models.ForeignKey(
         StructuralReminder, on_delete=models.SET_NULL, null=True, blank=True
@@ -131,16 +131,16 @@ class StructuralCalendarActivity(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.activity_date} - {self.company.name}"
+        return f"{self.activity_date} - {self.company.company_name}"
 
-class Notification(models.Model):
+class StructuralNotification(models.Model):
     sales_person = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="notifications"
     )
     company = models.ForeignKey(
-        StructuralCompany,
+        StructuralCustomer,
         on_delete=models.CASCADE,
         related_name="notifications"
     )
@@ -151,9 +151,9 @@ class Notification(models.Model):
     )
 
     title = models.CharField(max_length=255)
-    note = models.TextField()   # reminder note used as message
+    message = models.TextField()   # reminder note used as message
     read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.user} - {self.company.name}"
+        return f"{self.user} - {self.company.company_name}"
