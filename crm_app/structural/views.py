@@ -7,6 +7,7 @@ from django.db.models import Q
 import json
 from django.contrib.auth import get_user_model
 from rest_framework.views import APIView
+from .utils import create_next_recurring_reminder
 
 from .models import StructuralCustomer, StructuralContact, StructuralNote, StructuralReminder, StructuralNotification, StructuralCalendarActivity
 from .serializers import (

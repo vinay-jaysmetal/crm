@@ -4,7 +4,7 @@ from .models import StructuralReminder
 from .models import StructuralReminder, StructuralNotification
 
 
-def create_next_reminder(reminder):
+def create_next_recurring_reminder(reminder):
     """
     Auto-create next recurring reminder after completion
     """
