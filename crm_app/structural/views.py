@@ -31,7 +31,7 @@ class StructuralCustomerAPI(ListAPIView):
     # POST: Create new client
     # -----------------------
     def post(self, request, format=None):
-        required = ["company_name", "added_by", "company_type"]
+        required = ["company_name", "added_by", "category"]
         validation_errors = ValidateRequest(required, request.data)
         if validation_errors:
             return ResponseFunction(0, validation_errors[0]['error'], {})
@@ -140,13 +140,13 @@ class StructuralCustomerAPI(ListAPIView):
             is_dropdown = self.request.GET.get('is_dropdown', '0')
             exclude_id_list = json.loads(self.request.GET.get('exclude_id_list', '[]'))
             keyword = self.request.GET.get('search', '')  # search key
-            company_type = self.request.GET.get('company_type')  # Existing / Potential
+            category = self.request.GET.get('category')  # Existing / Potential
             lead_status = self.request.GET.get('lead_status')    # Hot / Warm / Cold
             project_status = self.request.GET.get('project_status')  # Hot / Warm / Cold
 
             # Non-model fields to exclude from filtering
             NON_DB_FIELDS = ['pagination', 'is_dropdown', 'exclude_id_list', 'page', 'search', 
-                                'company_type', 'lead_status', 'project_status']
+                                'category', 'lead_status', 'project_status']
 
             # Handle dropdown: only id and company_name
             if is_dropdown == '1':
@@ -180,8 +180,8 @@ class StructuralCustomerAPI(ListAPIView):
                 )
 
             # Apply category filters if provided
-            if company_type:
-                qs = qs.filter(company_type__iexact=company_type)
+            if category:
+                qs = qs.filter(category__iexact=category)
             if lead_status:
                 qs = qs.filter(lead_status__iexact=lead_status)
             if project_status:
