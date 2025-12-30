@@ -42,8 +42,8 @@ class StructuralReminderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StructuralReminder
-        fields = ('id', 'assigned_to', 'assigned_to_detail', 'reminder_date', 'frequency', 'note', 'completed')
-        read_only_fields = ('id',)
+        fields = ('id', 'assigned_to', 'assigned_to_detail', 'reminder_date', 'frequency', 'status',)
+        read_only_fields = ('id','status')
 
     def get_assigned_to_detail(self, obj):
         if obj.assigned_to:
@@ -71,7 +71,7 @@ class StructuralCustomerSerializer(serializers.ModelSerializer):
         fields = (
             'id',
             'company_name',
-            'company_type',
+            'category',
             'existing_category',
             'potential_category',
             'email',

@@ -1,3 +1,5 @@
+from time import timezone
+from django.utils import timezone
 from django.db import models
 from django.conf import settings
 
@@ -33,7 +35,7 @@ class StructuralCustomer(models.Model):
     address = models.TextField(blank=True, null=True)
 
     # Type & Categories
-    company_type = models.CharField(max_length=20, choices=COMPANY_TYPE_CHOICES)
+    category = models.CharField(max_length=20, choices=COMPANY_TYPE_CHOICES)
     existing_category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, null=True)
     potential_category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, blank=True, null=True)
 
@@ -97,6 +99,13 @@ class StructuralProject(models.Model):
 # Reminders per Company
 # ----------------------------
 class StructuralReminder(models.Model):
+
+    STATUS_CHOICES = [
+        ('Scheduled', 'Scheduled'),
+        ('Pending', 'Pending'),
+        ('Completed', 'Completed'),
+    ]
+
     FREQUENCY_CHOICES = [
         ('None', 'None'),
         ('Weekly', 'Weekly'),
@@ -106,11 +115,25 @@ class StructuralReminder(models.Model):
     ]
 
     company = models.ForeignKey(StructuralCustomer, on_delete=models.CASCADE, related_name="reminders")
-    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reminders")
+    project = models.ForeignKey(
+        StructuralProject, on_delete=models.CASCADE,
+        null=True, blank=True, related_name="reminders"
+    )
+
+    assigned_to = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     reminder_date = models.DateField()
-    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES, default='None')
-    note = models.TextField(null=True, blank=True)
-    completed = models.BooleanField(default=False)
+    frequency = models.CharField(max_length=20, choices=FREQUENCY_CHOICES)
+
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='Scheduled'
+    )
+
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
 
     def __str__(self):
         return f"Reminder for {self.company.company_name} on {self.reminder_date}"

@@ -170,6 +170,7 @@ class StructuralCustomerAPI(ListAPIView):
                     Q(company_name__icontains=keyword) |
                     Q(email__icontains=keyword) |
                     Q(phone__icontains=keyword) |
+                    Q(category__icontains=keyword) |
                     Q(existing_category__icontains=keyword) |
                     Q(potential_category__icontains=keyword) |
                     Q(address__icontains=keyword) |
@@ -344,15 +345,20 @@ class MyNotificationsAPIView(ListAPIView):
         
 class AcknowledgeReminderAPIView(APIView):
     permission_classes = [IsAuthenticated]
+
     def post(self, request, reminder_id):
         note = request.data.get("note")
         if not note:
-            return ResponseFunction(0, "Note is required", {})
+            return ResponseFunction(0, "Notes are mandatory", {})
 
         reminder = get_object_or_404(StructuralReminder, id=reminder_id)
 
-        reminder.completed = True
-        reminder.save()
+        # 🔒 Ownership check
+        if reminder.assigned_to != request.user:
+            return ResponseFunction(0, "You cannot complete this reminder", {})
+
+        if reminder.status != 'Pending':
+            return ResponseFunction(0, "Reminder is not pending", {})
 
         # Save note
         StructuralNote.objects.create(
@@ -361,25 +367,40 @@ class AcknowledgeReminderAPIView(APIView):
             created_by=request.user
         )
 
+        # Complete reminder
+        reminder.status = 'Completed'
+        reminder.completed_at = timezone.now()
+        reminder.save()
+
         # Mark notification read
         StructuralNotification.objects.filter(
             reminder=reminder,
             sales_person=request.user
         ).update(read=True)
 
-        return ResponseFunction(1, "Reminder acknowledged", {})
+        # 🔁 Auto-create next reminder
+        create_next_recurring_reminder(reminder)
+
+        return ResponseFunction(1, "Reminder completed", {})
+
     
 
 class MyRemindersAPIView(ListAPIView):
     serializer_class = StructuralReminderSerializer
-   # permission_classes = [IsAuthenticated]
-    queryset=StructuralReminder.objects.all()
-    #for logged in user
-    # def get_queryset(self):
-    #     return StructuralReminder.objects.filter(
-    #         assigned_to=self.request.user,
-    #         completed=False
-    #     ).order_by("reminder_date")
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        # CEO can see all reminders (read-only)
+        if hasattr(user, 'role') and user.role.name == 'CEO':
+            return StructuralReminder.objects.all().order_by("reminder_date")
+
+        # Sales Rep sees only their reminders
+        return StructuralReminder.objects.filter(
+            assigned_to=user
+        ).order_by("reminder_date")
+
 
 class CompanyRemindersAPIView(ListAPIView):
     serializer_class = StructuralReminderSerializer
