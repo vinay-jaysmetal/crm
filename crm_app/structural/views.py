@@ -394,19 +394,19 @@ class AcknowledgeReminderAPIView(APIView):
 
 class MyRemindersAPIView(ListAPIView):
     serializer_class = StructuralReminderSerializer
-    permission_classes = [IsAuthenticated]
+    #permission_classes = [IsAuthenticated]
+    queryset = StructuralReminder.objects.all() 
+    # def get_queryset(self):
+    #     user = self.request.user
 
-    def get_queryset(self):
-        user = self.request.user
+    #     # CEO can see all reminders (read-only)
+    #     if hasattr(user, 'role') and user.role.name == 'CEO':
+    #         return StructuralReminder.objects.all().order_by("reminder_date")
 
-        # CEO can see all reminders (read-only)
-        if hasattr(user, 'role') and user.role.name == 'CEO':
-            return StructuralReminder.objects.all().order_by("reminder_date")
-
-        # Sales Rep sees only their reminders
-        return StructuralReminder.objects.filter(
-            assigned_to=user
-        ).order_by("reminder_date")
+    #     # Sales Rep sees only their reminders
+    #     return StructuralReminder.objects.filter(
+    #         assigned_to=user
+    #     ).order_by("reminder_date")
 
 
 class CompanyRemindersAPIView(ListAPIView):
