@@ -250,14 +250,20 @@ class StructuralCustomerAPI(ListAPIView):
             )
 
             # 📅 CREATE CALENDAR ENTRY
+            # Get the latest note for this company
+            latest_note = reminder_obj.company.notes.last()
+            description = latest_note.note if latest_note else ""
+
+            # Create calendar activity
             StructuralCalendarActivity.objects.create(
             company=company_obj,
             user=assigned_to_user,
             related_reminder=reminder_obj,
             title="Customer Follow-up",
             activity_date=reminder_obj.reminder_date,
-            description=reminder_obj.note
+            description=description  # use description here
             )
+
 
             # Notes
             added_by_id = request.data.get("added_by")

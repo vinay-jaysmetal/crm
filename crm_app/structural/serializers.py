@@ -154,13 +154,22 @@ class StructuralNotificationSerializer(serializers.ModelSerializer):
         r = obj.reminder
         if not r:
             return None
+
+        # Fetch notes for this reminder via the customer
+        notes = r.company.notes.values_list('note', flat=True)  # list of note texts
+
         return {
             "id": r.id,
             "date": r.reminder_date,
             "frequency": r.frequency,
-            "note": r.note,
-            "completed": r.completed,
+            "notes": list(notes),  # include all notes
+            "status": r.status,
+            "assigned_to": {
+                "id": r.assigned_to.id,
+                "name": r.assigned_to.get_full_name(),
+            } if r.assigned_to else None,
         }
+
 
 
 class StructuralCalendarSerializer(serializers.ModelSerializer):
@@ -204,22 +213,21 @@ class StructuralCalendarSerializer(serializers.ModelSerializer):
         if not r:
             return None
 
+        notes = r.company.notes.values_list('note', flat=True)
+        description = "\n".join(notes)
+
+
         return {
             "id": r.id,
             "date": r.reminder_date,
             "frequency": r.frequency,
-            "note": r.note,
-            "completed": r.completed,
+            "status": r.status,
+            "completed_at": r.completed_at,
+            "notes": list(notes),  # add notes here
             "assigned_to": {
                 "id": r.assigned_to.id,
                 "name": r.assigned_to.get_full_name(),
             } if r.assigned_to else None,
         }
 
-    def get_notes(self, obj):
-        if not obj.company:
-            return []
-        return list(
-            obj.company.notes.values("id", "note")
-        )
 
