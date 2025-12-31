@@ -39,10 +39,10 @@ class StructuralNoteSerializer(serializers.ModelSerializer):
 class StructuralReminderSerializer(serializers.ModelSerializer):
     assigned_to_detail = serializers.SerializerMethodField(read_only=True)
     assigned_to = serializers.PrimaryKeyRelatedField(queryset=User.objects.all())
-
+    notes = serializers.SerializerMethodField()
     class Meta:
         model = StructuralReminder
-        fields = ('id', 'assigned_to', 'assigned_to_detail', 'reminder_date', 'frequency', 'status',)
+        fields = ('id', 'assigned_to', 'assigned_to_detail', 'reminder_date', 'frequency', 'status', 'notes')
         read_only_fields = ('id','status')
 
     def get_assigned_to_detail(self, obj):
@@ -55,6 +55,17 @@ class StructuralReminderSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("assigned_to is required for each reminder.")
         return value
 
+    def get_notes(self, obj):
+        # Assuming Reminder has foreign key to Customer
+        customer = obj.company
+        last_note = customer.notes.last()  # Get last note for this customer
+        if last_note:
+            return {
+                "id": last_note.id,
+                "note": last_note.note,
+                "created_by": last_note.created_by.username if last_note.created_by else None
+            }
+        return None
 
 # ----------------------------
 # Company Serializer

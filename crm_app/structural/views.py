@@ -439,6 +439,7 @@ class CompanyRemindersAPIView(ListAPIView):
             company__id=company_id
         ).order_by("reminder_date")
 
+<<<<<<< HEAD
 class StructuralCategoriesAPIView(APIView):
     # permission_classes = [IsAuthenticated]
     # authentication_classes = (BearerOrTokenAuthentication,)
@@ -458,3 +459,18 @@ class StructuralCategoriesAPIView(APIView):
             "categories": categories,
         }
         return ResponseFunction(1, "Categories fetched", data)
+=======
+
+class StructuralCategoriesAPIView(APIView):
+    # permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        categories = [
+            {"name": "Existing", "sub_categories": [c[0] for c in StructuralCustomer.CATEGORY_CHOICES]},
+            {"name": "Potential", "sub_categories": [c[0] for c in StructuralCustomer.CATEGORY_CHOICES]},
+            {"name": "Lead Status", "sub_categories": [c[0] for c in StructuralCustomer.LEAD_STATUS_CHOICES]},
+            {"name": "Project Status", "sub_categories": [c[0] for c in StructuralCustomer.PROJECT_STATUS_CHOICES]},
+        ]
+        return ResponseFunction(1, "Categories fetched", categories)
+
+>>>>>>> c5857fd16a47cbd7f5f16f6c8dd46cb2f0f30412
