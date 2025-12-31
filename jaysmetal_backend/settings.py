@@ -295,7 +295,10 @@ LOGGING = {
 
 REST_FRAMEWORK = {
     # 'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
-    'DEFAULT_PAGINATION_CLASS': 'django_solvitize.utils.custompagination.CustomPagination',   
+    'DEFAULT_PAGINATION_CLASS': 'django_solvitize.utils.custompagination.CustomPagination',
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
     'PAGE_SIZE': 8,
 }
 
