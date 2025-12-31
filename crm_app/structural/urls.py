@@ -6,7 +6,8 @@ from .views import (
     MyNotificationsAPIView,
     AcknowledgeReminderAPIView,
     MyRemindersAPIView,
-    CompanyRemindersAPIView
+    CompanyRemindersAPIView,
+    StructuralCategoriesAPIView
 )
 
 urlpatterns = [
@@ -37,4 +38,5 @@ urlpatterns = [
     path('structural/reminders/<int:reminder_id>/acknowledge/', AcknowledgeReminderAPIView.as_view(), name='acknowledge-reminder'),
     path('structural/my-reminders/', MyRemindersAPIView.as_view(), name='my-reminders'),
     path('structural/companies/<int:company_id>/reminders/', CompanyRemindersAPIView.as_view(), name='company-reminders'),
+    path('structural/categories/', StructuralCategoriesAPIView.as_view(), name='structural-categories'),
 ]
